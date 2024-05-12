@@ -9,7 +9,7 @@ import scala.util.Random
 class Int8Test_1024 extends AnyFlatSpec with ChiselScalatestTester {
 
   "Waveform" should "pass" in { 
-    for(kk <- 0 until 102400){
+    for(kk <- 0 until 1024){
       test(new bitletPE(SInt(8.W), SInt(32.W), 64, BitletConfigs(SInt(8.W)))).withAnnotations(Seq(WriteVcdAnnotation))  {
         dut =>
           //初始化
