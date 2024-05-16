@@ -20,6 +20,6 @@ class ShiftOrchest(macnum: Int, is_int8: Boolean, manti_len: Int, exp_width: Int
   }
 }
 
-object ShiftOrchest extends App {
-  emitVerilog(new ShiftOrchest(64, false, 23, 8), Array("--target-dir", "generated"))
-}
+// object ShiftOrchest extends App {
+//   emitVerilog(new ShiftOrchest(64, false, 23, 8), Array("--target-dir", "generated"))
+// }

@@ -39,6 +39,6 @@ class ExpMax(MacNum: Int, is_int8: Boolean, exp_width: Int) extends Module {
   }
 }
 
-object ExpMax extends App {
-  emitVerilog(new ExpMax(32,false,8), Array("--target-dir", "generated"))
-}
+// object ExpMax extends App {
+//   emitVerilog(new ExpMax(32,false,8), Array("--target-dir", "generated"))
+// }

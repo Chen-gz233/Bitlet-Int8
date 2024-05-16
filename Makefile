@@ -1,4 +1,4 @@
-all:
+run:
 	sbt "runMain bitlet.bitletPE"
 
 test:
