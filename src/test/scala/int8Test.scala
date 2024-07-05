@@ -1,4 +1,4 @@
-package bitlet
+package gemmini
 
 import chisel3._
 import chisel3.util._
@@ -71,7 +71,7 @@ val activate = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
   println("")
 
   "Waveform" should "pass" in { 
-    test(new bitletPE(SInt(8.W), SInt(32.W), 64, BitletConfigs(SInt(8.W)))).withAnnotations(Seq(WriteVcdAnnotation))  {
+    test(new gemminiPE(SInt(8.W), SInt(32.W), SInt(32.W),64, BitletConfigs(SInt(8.W)))).withAnnotations(Seq(WriteVcdAnnotation))  {
       dut =>
         //初始化
         dut.io.in_valid.poke(false.B)

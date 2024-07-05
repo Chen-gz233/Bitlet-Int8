@@ -5,3 +5,6 @@ https://luhang-hpu.github.io/files/bitlet-MICRO21.pdf
 
 ## the verilog HDL version 
 https://github.com/Zhu-Zixuan/Bitlet-PE
+
+## The ONNX Simulation
+https://github.com/Chen-gz233/Bitlet-CLike 

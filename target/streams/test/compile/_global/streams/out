@@ -1,0 +1,9 @@
+[0m[[0m[31merror[0m] [0m[0m/home/chen/bitlet/chisel_int8/src/test/scala/int8Test.scala:74:10: not enough arguments for constructor gemminiPE: (inputType: T, outputType: T, accType: T, dataNumToPe: Int, config: gemmini.BitletConfigs[T])(implicit evidence$1: gemmini.Arithmetic[T])gemmini.gemminiPE[T].[0m
+[0m[[0m[31merror[0m] [0m[0mUnspecified value parameter config.[0m
+[0m[[0m[31merror[0m] [0m[0m    test(new gemminiPE(SInt(8.W), SInt(32.W), 64, BitletConfigs(SInt(8.W)))).withAnnotations(Seq(WriteVcdAnnotation))  {[0m
+[0m[[0m[31merror[0m] [0m[0m         ^[0m
+[0m[[0m[31merror[0m] [0m[0m/home/chen/bitlet/chisel_int8/src/test/scala/int8Test_1024.scala:13:12: not enough arguments for constructor gemminiPE: (inputType: T, outputType: T, accType: T, dataNumToPe: Int, config: gemmini.BitletConfigs[T])(implicit evidence$1: gemmini.Arithmetic[T])gemmini.gemminiPE[T].[0m
+[0m[[0m[31merror[0m] [0m[0mUnspecified value parameter config.[0m
+[0m[[0m[31merror[0m] [0m[0m      test(new gemminiPE(SInt(8.W), SInt(32.W), 64, BitletConfigs(SInt(8.W)))).withAnnotations(Seq(WriteVcdAnnotation))  {[0m
+[0m[[0m[31merror[0m] [0m[0m           ^[0m
+[0m[[0m[31merror[0m] [0m[0mtwo errors found[0m

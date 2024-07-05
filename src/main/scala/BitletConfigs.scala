@@ -1,4 +1,4 @@
-package bitlet
+package gemmini
 
 import chisel3._
 import chisel3.SInt

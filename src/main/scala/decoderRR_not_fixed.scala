@@ -1,4 +1,4 @@
-package bitlet
+package gemmini
 
 import scala.math
 import chisel3.{Mux, _}
@@ -257,10 +257,6 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
   done_reg_r3 := done_reg_r2
   done_reg_r4 := done_reg_r3
 
-  // io.done :=   Mux((done_time_reg === 0.U).asBool,done_reg_r1,
-  //              Mux((done_time_reg === 1.U).asBool,done_reg_r2,
-  //              Mux((done_time_reg === 2.U).asBool,done_reg_r3,
-  //              done_reg_r4)))
   io.done :=   done_reg_r4
 
   windowReg1_0 := windowReg0_0 + windowReg0_1
@@ -514,150 +510,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
   }
 
 
-    /*
-switch(valid_sp){
-    is(0.U){  //0000
-      SP1 := 0.U          //1位宽
-      SpillOver1 := 0.S   //32位宽
-      SpillOver2 := Mux(SP1.asBool,SpillOver2,0.S)  //0
-      //改：SP2 := Mux(SP1.asBool,SP2,0.U)    //0
-      //当SpillOver2中还有值时，sp2不能置0
-      SP2 := Mux((SP1.asBool)&(SpillOver2 =/=0.S),1.U,0.U)    //0
 
-      SpillOver3 := Mux(SP3.asBool,SpillOver3,0.S) //0
-      SP3 := Mux(((SP1.asBool)|(SP2.asBool))&(SpillOver3 =/=0.S),1.U,0.U) //0
-      //SP1=SP2=SP3 = 0
-    }
-    is(3.U){  //0011
-      
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg0_0)//有符号数windowReg2_0
-      SP1 := 1.U
-       //当sp1中有值，sp2中没有值，则将数据放在sp2中保存
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2)
-      //改：SP2 := Mux((SP1.asBool),1.U,0.U)
-      SP2 := Mux((SP1.asBool)&(!SP2.asBool),1.U,0.U)
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg0_0,0.S)
-      SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,0.U)
-    }
-    is(5.U){  //0101
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg0_0)//windowReg1_0
-      SP1 := 1.U
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2)
-      SP2 := Mux((SP1.asBool)&(!SP2.asBool),1.U,0.U)
-      // 23.11.24 改：SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg0_0,0.S)
-      SpillOver3 := Mux(SpillOver3 =/=0.S,SpillOver3,
-        Mux((SP1.asBool) & (SP2.asBool),windowReg0_0,0.S))
-      // 23.11.24 改：SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,0.U)
-      SP3 := Mux(SpillOver3 =/=0.S,1.U,  Mux((SP1.asBool) & (SP2.asBool),1.U,0.U))
-    }
-    is(6.U){  //0110
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg1_0)
-      SP1 := 1.U
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg1_0,SpillOver2)
-      SP2 := Mux((SP1.asBool)&(!SP2.asBool),1.U,0.U)
-      //23.11.24 改：SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg1_0,0.S)
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg1_0,SpillOver3)
-      //23.11.24 改：SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,0.U)
-      SP3 := Mux(((!SP1.asBool)|(!SP2.asBool))&(SpillOver3 =/=0.S),1.U,0.U)
-
-    }
-    is(7.U){  //0111    valid_num4 = 0,valid_num3=1.valid_num2=1,valid_num1 = 1
-      //当多个1存在时，要特特别注意
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg1_0)
-      //SP1=1则Sp2记录windowReg1_0，如果sp2也有值，则保持不变，让sp3记录
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg1_0,
-                    (Mux((!SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2)))
-      SP1 := 1.U
-      //2023.11.24改： SP2 := 1.U
-      SP2 := Mux((SP1.asBool)&(!SP2.asBool),1.U,0.U)
-      //增 2023、10、23.
-      SP3 :=Mux(((SP1.asBool)&(SP2.asBool))|((SP1.asBool)&(!SP2.asBool))|((!SP1.asBool)&(SP2.asBool)),1.U,0.U)
-      //2023.11.22改：遗漏WindowReg0_0 问题，造成bug
-      //SP3 :=Mux((SP1.asBool)&(!SP2.asBool),1.U,0.U) //Sp2用来存windowReg1_0，那么sp3存windowReg0_0
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg1_0,
-                        Mux(((!SP1.asBool)&(SP2.asBool))|((SP1.asBool)&(!SP2.asBool)),windowReg0_0,0.S))
-    }
-    is(9.U){  //1001
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg0_0)
-      SP1 := 1.U
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2)
-      SP2 := Mux((SP1.asBool),1.U,0.U)
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg0_0,0.S)
-      SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,0.U)
-      
-    }
-    is(10.U){ //1010
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg1_0)
-      SP1 := 1.U
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg1_0,SpillOver2)
-      SP2 := Mux((SP1.asBool),1.U,0.U)
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg1_0,SpillOver3) 
-      //2023.11.26改：SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,0.U)
-      SP3 := Mux((SpillOver3 =/=0.S),1.U,0.U)
-      
-    }
-    is(11.U){ //1011
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg1_0)
-      //10.23日，纠结windowReg1_0 或者windowReg0_0（解决）
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg1_0,
-                    (Mux((!SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2)))
-      SP1 := 1.U
-      SP2 := 1.U
-      //10.23 新增
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg1_0,
-                    (Mux((SP1.asBool)&(!SP2.asBool),windowReg0_0,
-                     (Mux((!SP1.asBool)&(SP2.asBool),windowReg0_0,0.S)) )))
-      SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,
-                  (Mux((SP1.asBool)&(!SP2.asBool),1.U,
-                     (Mux((!SP1.asBool)&(SP2.asBool),1.U,0.U)))))
-    }
-    is(12.U){ //1100
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg2_0)
-      SP1 := 1.U
-      //改：SpillOver2 := Mux((SP1.asBool),windowReg2_0,0.S)
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg2_0,SpillOver2)
-      SP2 := Mux((SP1.asBool),1.U,0.U)
-      SpillOver3 := Mux((SP1.asBool)&(SP2.asBool),windowReg2_0,0.S)
-      SP3 := Mux((SP1.asBool)&(SP2.asBool),1.U,0.U)
-      
-    }
-    is(13.U){ //1101
-      //改：2023.11.23 SpillOver1 := windowReg2_0
-      SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg2_0)
-      //改：2023.11.23 SpillOver2 := windowReg0_0
-      SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg2_0,
-                    Mux((!SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2))
-      SP1 := 1.U
-      SP2 := 1.U
-      //增：2023.11.24
-      SpillOver3 := Mux((SP1.asBool)&(!SP2.asBool),windowReg0_0,
-                        Mux((!SP1.asBool)&(SP2.asBool),windowReg0_0,
-                          0.S))
-      SP3 := Mux((SP1.asBool)&(!SP2.asBool),1.U,
-                Mux((!SP1.asBool)&(SP2.asBool),1.U,0.U))
-
-    }
-    is(14.U){ //1110
-      SpillOver1 := windowReg2_0
-      //改：2023.11.23 SpillOver1 := Mux((SP1.asBool),SpillOver1,windowReg2_0)
-      SpillOver2 := windowReg1_0
-      //改：2023.11.23 SpillOver2 := Mux((SP1.asBool)&(!SP2.asBool),windowReg2_0,Mux((!SP1.asBool)&(!SP2.asBool),windowReg0_0,SpillOver2))
-      SP1 := 1.U
-      SP2 := 1.U
-    }
-    is(15.U){ //1111
-      SpillOver1 := windowReg2_0
-      SpillOver2 := windowReg1_0
-      SpillOver3 := windowReg0_0
-      SP1 := 1.U
-      SP2 := 1.U
-      SP3 := 1.U
-    }
-
-
-  }
- */
-  //io.done := done1
 
   io.outNum := Mux((valid_num4).asBool,(windowReg3_0).asSInt,
                 Mux((valid_num3).asBool,(windowReg2_0).asSInt,
