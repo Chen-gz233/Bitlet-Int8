@@ -14,7 +14,7 @@ https://github.com/Chen-gz233/Bitlet-CLike
 ## Bitlet 模块说明
 
 ### Top
-![wmanti_to_sewo](pics\\Top_input.png )
+![wmanti_to_sewo](pics/Top_input.png )
 io | 功能|
 ---|-----
 `in_a` |  矩阵A输入
