@@ -38,7 +38,7 @@ io | 功能|
 
 ### shiftOrchestModule 模块
 
-![wmanti_to_sewo](pics\\wmanti_to_sewo.png )
+![wmanti_to_sewo](pics/wmanti_to_sewo.png )
 
 
 这个模块将输入的**wmanti**矩阵数据拆分成“0 或 1”
@@ -61,7 +61,7 @@ io |功能 |
 这种操作的目的是将`wmanti`中的数据按位提取，因为不同的位有不同的权重。因此得出`sewo`中每行数据的权重不同。
 
 ### RRreg 模块
-![wmanti_to_sewo](pics\\RRreg_input.png )
+![wmanti_to_sewo](pics/RRreg_input.png )
 
 在这个模块中，`aManti`是之前取出符号位的矩阵`A`。应该有`64`个`8`位宽数据，这里做简化只显示了`0-7`个。
 
@@ -74,13 +74,13 @@ io |功能 |
 `sewo(0)`中第一组数据权重为`0`,`sewo(1)`中第一组数据权重为`1`,以此类推。因此`sewo(i)`在与`aManti`做乘法时，就是将`aManti`左移`i`位，再补上符号位。这就是`Bitlet`模块中最重要的计算方式，对应`decoderRR_not_fixed`代码中的`UIntShiftToSInt_int8`函数。
 
 ### decoderRR_not_fixed 模块
-![wmanti_to_sewo](pics\\decoder_0_input.png )
+![wmanti_to_sewo](pics/decoder_0_input.png )
 
 **无符号数到有符号数的转换**：
    - 使用 `UIntShiftToSInt_int8` 函数，将无符号数右移并根据符号位扩展转为有符号数。
 
 
-![wmanti_to_sewo](pics\\decoder_window.png )
+![wmanti_to_sewo](pics/decoder_window.png )
 根据`sewo`中的数据，从低位到高位每`8`位取为`window`滑窗。
 
 根据`window`在`num_table`获取29位宽的数据(`num_table_temp := num_table(window)`)，将`num_table`解码为`10`组数据(`ones`,`two_x`,`three_x`,`four_x`)。
