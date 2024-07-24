@@ -10,10 +10,10 @@ class Int8Test extends AnyFlatSpec with ChiselScalatestTester {
 //用于存储软件模拟结果  
 var re = 0
 
-val weight = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
-val activate = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
+// val weight = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
+// val activate = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
 
-/*
+
 val weight = Array(
 -109,60,-34,-96,-109,35,9,10,69,
 21,-48,-102,-34,-53,101,107,57,
@@ -35,6 +35,7 @@ val activate = Array(
 -128,-116,57,-84,121,70,-68,8,
 5,-112,115,-121,100,-112,10
 )
+/*
 val weight = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
 val activate = (1 to 64).map(_ => Random.nextInt(256) - 128).toArray
 

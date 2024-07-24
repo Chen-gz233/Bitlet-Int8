@@ -9,21 +9,18 @@ import firrtl.Utils.False
 //根据window在num_table获取29位宽的数据，并解码为10组数据
 //根据这10组数据，将io.sign和io.aManti数据结合，转为有符号数(31位)
 //将这些有符号数相加
-//
-                          //RR_reg中macnum = 64
 class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
                 is_int8: Boolean, shiftNum: Int, windowsize: Int) extends Module {
   val io = IO(new Bundle {
     val sign = Input(Vec(macnum, Bool()))
-    val sewo = Input(UInt(macnum.W))    //w重排列
-    //改：val aManti = Input(Vec(macnum, UInt((7).W)))
+    val sewo = Input(UInt(macnum.W))    //weight重排列
     val aManti = Input(Vec(macnum, UInt((8).W)))
-    val start = Input(Bool())
-    val done = Output(Bool())
+    val in_valid = Input(Bool())
+    val out_valid = Output(Bool())
     val outNum = Output(SInt((32.W)))
   })
     //无符号数右移+符号位扩展转为有符号数
-    //UIntShiftToSInt_int8(io.sign(8.U * cnt),io.aManti(8.U * cnt),shiftNum, 31),
+    //UIntShiftToSInt_int8(io.sign(8.U * cnt),io.aManti(8.U * cnt),shiftNum, 31)
   def UIntShiftToSInt_int8[T <: Data](sign: Bool, sourceNum: UInt, shiftNum: Int, NumWidth: Int): SInt = {
     val destNumNoSign = Wire(UInt(NumWidth.W)) //存储无符号整数的 绝对值
     val source = Wire(UInt(NumWidth.W))
@@ -31,7 +28,6 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
     source := sourceNum
     when(sign) {
       destNumNoSign := ~(source << shiftNum.U) + 1.U  //左移，取反，+1
-      //      result := Cat((scala.math.pow(2,25-shiftNum)-1).toInt.U((25-shiftNum).W), destNumNoSign)
       //新增：对 -0 的操作，避免1-00000的出现
       when(destNumNoSign === 0.U){
         result := Cat(0.U, destNumNoSign)
@@ -128,27 +124,28 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
   3.U(2.W),3.U(2.W),3.U(2.W),3.U(2.W),3.U(2.W),3.U(2.W)  
   )))
   
-
-  val start = cnt * 8.U             //cnt初始化为0，一次移8位
+  val start = cnt * windowsize.U //8.U            //cnt初始化为0，一次移8位
   window := (io.sewo >> start)(7,0)//先位移start位，然后切片提取[7：0],window (Uint)
 
   done_time := time_table(done_addr)  //无符号的8位数，查找time数组
 
-  num_table_temp := num_table(window)   //根据window索引到一个29位的无符号整数
+  num_table_temp := num_table(window)   //根据window索引到一个29位宽的无符号整数
     //分四层decode 
     //one ,two, three 都是wire Uint
 
     //num_table中一个29位宽的数被解码为10组数据
-  ones := num_table_temp(1,0) //给滑窗中1 的稀疏情况分等级，用于加法树
-  //ones=0 只有一个1，ones=1 只有两个1，ones=2 有3-4个1，ones=3 不稀疏
-  two_0 := num_table_temp(4,2)  //ones=0或者1 时：需要2个加法树的叶子节点
+    //"ones"给滑窗中"1"的稀疏情况分等级
+     //ones=0 滑窗window有0-1个"1";ones=1 滑窗window有2个"1";ones=2 有3-4个"1";ones=3 不稀疏
+  ones := num_table_temp(1,0) //ones=0 时：滑窗window中有0-1个"1",不需要标注"1"的位置
+ 
+  two_0 := num_table_temp(4,2)  //ones=1 时：滑窗window中有2个"1",two_x 用于标注滑窗window中"1"的位置
   two_1 := num_table_temp(7,5)
 
-  three_0 :=num_table_temp(10,8) 
+  three_0 :=num_table_temp(10,8)  //ones=2 时：滑窗window中有3个"1",three_x 用于标注滑窗window中"1"的位置
   three_1 :=num_table_temp(13,11)
   three_2 :=num_table_temp(16,14)
 
-  four_0 :=num_table_temp(19,17) //ones=2 时：需要4个加法树的叶子节点
+  four_0 :=num_table_temp(19,17) //ones=2 时：滑窗window中有4个"1",four_x 用于标注滑窗window中"1"的位置
   four_1 :=num_table_temp(22,20)
   four_2 :=num_table_temp(25,23)
   four_3 :=num_table_temp(28,26)
@@ -158,7 +155,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
   switch(state) {
     is(idle) {
 
-      when (io.start ) {
+      when (io.in_valid ) {
         state := dect
         cnt := 0.U
         done_reg := 0.U
@@ -178,7 +175,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
       when(cnt >= 4.U){
         done_addr := (done_addr << 2.U) | Cat(zeros,ones)
       }
-      when(ones === 0.U){
+      when(ones === 0.U){//ones=0 window滑窗中有1个"1"
                           //window是sewo权重向量中的8位
                           //                                io中sign的第x个元素， io中aManti(7位宽)的第x个元素，左移位数，位宽
         windowReg0_0 := Mux(window(0), UIntShiftToSInt_int8(io.sign(8.U * cnt),io.aManti(8.U * cnt),shiftNum, 31),
@@ -197,7 +194,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
         windowReg0_6 := 0.S
         windowReg0_7 := 0.S
         cnt := cnt + 1.U
-      }.elsewhen(ones === 1.U){
+      }.elsewhen(ones === 1.U){//ones=0 window滑窗中有2个"1"
           windowReg0_0 := UIntShiftToSInt_int8(io.sign(8.U * cnt +two_0),io.aManti(8.U * cnt +two_0),shiftNum, 31) 
           windowReg0_1 := UIntShiftToSInt_int8(io.sign(8.U * cnt +two_1),io.aManti(8.U * cnt +two_1),shiftNum, 31)
           windowReg0_2 := 0.S
@@ -207,8 +204,8 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
           windowReg0_6 := 0.S
           windowReg0_7 := 0.S
           cnt := cnt + 1.U
-      }.elsewhen(ones === 2.U){
-          when(Cat(three_0,three_1,three_2) === 0.U){
+      }.elsewhen(ones === 2.U){//ones=2 
+          when(Cat(three_0,three_1,three_2) === 0.U){//window滑窗中有4个"1"
             windowReg0_0 := UIntShiftToSInt_int8(io.sign(8.U * cnt +four_0),io.aManti(8.U * cnt +four_0),shiftNum, 31) 
             windowReg0_1 := UIntShiftToSInt_int8(io.sign(8.U * cnt +four_1),io.aManti(8.U * cnt +four_1),shiftNum, 31)
             windowReg0_2 := UIntShiftToSInt_int8(io.sign(8.U * cnt +four_2),io.aManti(8.U * cnt +four_2),shiftNum, 31)
@@ -217,7 +214,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
             windowReg0_5 := 0.S
             windowReg0_6 := 0.S
             windowReg0_7 := 0.S
-          }.otherwise{
+            }.otherwise{//window滑窗中有4个"1"
             windowReg0_0 := UIntShiftToSInt_int8(io.sign(8.U * cnt +three_0),io.aManti(8.U * cnt +three_0),shiftNum, 31) 
             windowReg0_1 := UIntShiftToSInt_int8(io.sign(8.U * cnt +three_1),io.aManti(8.U * cnt +three_1),shiftNum, 31)
             windowReg0_2 := UIntShiftToSInt_int8(io.sign(8.U * cnt +three_2),io.aManti(8.U * cnt +three_2),shiftNum, 31)
@@ -228,7 +225,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
             windowReg0_7 := 0.S
             }
           cnt := cnt + 1.U
-      }.otherwise{ //ones === 3.U
+      }.otherwise{ //ones === 3.U, 放弃稀疏性
           windowReg0_0 := Mux(window(0), UIntShiftToSInt_int8(io.sign(8.U * cnt),io.aManti(8.U * cnt),shiftNum, 31), 0.S)
           windowReg0_1 := Mux(window(1), UIntShiftToSInt_int8(io.sign(8.U * cnt + 1.U),io.aManti(8.U * cnt + 1.U),shiftNum, 31), 0.S)
           windowReg0_2 := Mux(window(2), UIntShiftToSInt_int8(io.sign(8.U * cnt + 2.U),io.aManti(8.U * cnt + 2.U),shiftNum, 31), 0.S)
@@ -246,18 +243,7 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
       state := idle
     }
   }
-  //23.11.22改：Reg -> Wire 
-  val done_reg_r1 = WireInit(0.U(1.W))
-  val done_reg_r2 = WireInit(0.U(1.W))
-  val done_reg_r3 = WireInit(0.U(1.W))
-  val done_reg_r4 = WireInit(0.U(1.W))
-  //打节拍
-  done_reg_r1 := done_reg
-  done_reg_r2 := done_reg_r1
-  done_reg_r3 := done_reg_r2
-  done_reg_r4 := done_reg_r3
-
-  io.done :=   done_reg_r4
+  io.out_valid :=   done_reg
 
   windowReg1_0 := windowReg0_0 + windowReg0_1
   windowReg1_1 := windowReg0_2 + windowReg0_3
@@ -270,20 +256,21 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
   windowReg3_0 := windowReg2_0 + windowReg2_1
 
   //23.11.22改：Reg -> Wire 
+  //TODO 这里未来将用于计算结果前递
   val valid_num1 = WireInit(0.U(1.W))
 
   val valid_num2 = WireInit(0.U(1.W))
-  val valid_num2_r1 = WireInit(0.U(1.W))
+  // val valid_num2_r1 = WireInit(0.U(1.W))
 
   val valid_num3 = WireInit(0.U(1.W))
-  val valid_num3_r1 = WireInit(0.U(1.W))
-  val valid_num3_r2 = WireInit(0.U(1.W))
+  // val valid_num3_r1 = WireInit(0.U(1.W))
+  // val valid_num3_r2 = WireInit(0.U(1.W))
   
 
   val valid_num4 = WireInit(0.U(1.W))
-  val valid_num4_r1 = WireInit(0.U(1.W))
-  val valid_num4_r2 = WireInit(0.U(1.W))
-  val valid_num4_r3 = WireInit(0.U(1.W))
+  // val valid_num4_r1 = WireInit(0.U(1.W))
+  // val valid_num4_r2 = WireInit(0.U(1.W))
+  // val valid_num4_r3 = WireInit(0.U(1.W))
 
   //在解码时，29位数据num_table_temp的最低两位的情况
   //one的值，代表有几个1
@@ -296,32 +283,38 @@ class decoderRR_not_fixed(macnum: Int, exp_width: Int, manti_len: Int,
 
   
   when((state === dect) && (ones === 1.U)){
-    valid_num2_r1 := 1.U
+    // valid_num2_r1 := 1.U
+    valid_num2 := 1.U
   }
   .otherwise{
-    valid_num2_r1 := 0.U
+    // valid_num2_r1 := 0.U
+    valid_num2 := 0.U
   }
-  valid_num2 := valid_num2_r1
+  // valid_num2 := valid_num2_r1
 
   
   when((state === dect) && ((ones === 2.U))){
-    valid_num3_r1 := 1.U
+    // valid_num3_r1 := 1.U
+    valid_num3 := 1.U
   }
   .otherwise{
-    valid_num3_r1 := 0.U
+    // valid_num3_r1 := 0.U
+    valid_num3 := 0.U
   }
-  valid_num3_r2 := valid_num3_r1
-  valid_num3 := valid_num3_r2
+  // valid_num3_r2 := valid_num3_r1
+  // valid_num3 := valid_num3_r2
 
   when((state === dect) && ((ones === 3.U))){
-    valid_num4_r1 := 1.U
+    // valid_num4_r1 := 1.U
+    valid_num4 := 1.U
   }
   .otherwise{
-    valid_num4_r1 := 0.U
+    // valid_num4_r1 := 0.U
+    valid_num4 := 0.U
   }
-  valid_num4_r2 := valid_num4_r1
-  valid_num4_r3 := valid_num4_r2
-  valid_num4 := valid_num4_r3
+  // valid_num4_r2 := valid_num4_r1
+  // valid_num4_r3 := valid_num4_r2
+  // valid_num4 := valid_num4_r3
   
 
   val SpillOver1 = RegInit(0.S(32.W))
